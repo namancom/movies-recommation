@@ -1,66 +1,86 @@
-import altair as alt
+import zipfile
 import pandas as pd
 import streamlit as st
+import pickle
+import requests
+from PIL import Image
+from io import BytesIO
+import os
+from dotenv import load_dotenv
+load_dotenv()
+MY_ENV_VAR = os.getenv('apikey')
+def unzip_file_if_not_exists(zip_file_path, extract_to_dir):
+    # Check if the directory already exists
+    if not os.path.exists(extract_to_dir):
+        with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+            zip_ref.extractall(extract_to_dir)
+    else:
+        print(f"Directory '{extract_to_dir}' already exists. No extraction needed.")
 
-# Show the page title and description.
-st.set_page_config(page_title="Movies dataset", page_icon="🎬")
-st.title("🎬 Movies dataset")
-st.write(
-    """
-    This app visualizes data from [The Movie Database (TMDB)](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata).
-    It shows which movie genre performed best at the box office over the years. Just 
-    click on the widgets below to explore!
-    """
+zip_file_path = 'similarity.zip'  
+extract_to_dir = 'similarity_files'  
+
+unzip_file_if_not_exists(zip_file_path, extract_to_dir)
+
+def fetch_poster(movie_id):
+    response = requests.get('https://www.omdbapi.com/?t={}&apikey={}'.format(movie_id,MY_ENV_VAR))
+    data = response.json()
+    
+    # Check if the Poster field exists
+    if 'Poster' in data and data['Poster'] != "N/A":
+        poster_url = data["Poster"]
+        img_response = requests.get(poster_url)
+        img = Image.open(BytesIO(img_response.content))
+        return img  # Return the image object to display
+    
+def recommend(movie):
+    movie_index = movies[movies['title'] == movie].index[0]
+    distances = similarity[movie_index]
+    movies_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:6]
+    fetch_poster(movie_index)
+    recommended_movies = []
+    recommended_movies_posters = []
+    for x in movies_list:
+        movie_id = movies.iloc[x[0]].movie_id
+        recommended_movies.append(movies.iloc[x[0]].title)
+        
+        # Fetch poster and handle cases where no poster is found
+        poster = fetch_poster(movie_id)
+        if poster:
+            recommended_movies_posters.append(poster)
+        else:
+            recommended_movies_posters.append("empty.png")
+        
+        
+    return recommended_movies, recommended_movies_posters
+
+
+movies_dict = pickle.load(open('movie_dict.pkl', 'rb'))
+movies = pd.DataFrame(movies_dict)
+
+similarity = pickle.load(open('./similarity_files/similarity.pkl', 'rb'))
+st.title('Movie Recommender System')
+
+selected_movie_name = st.selectbox(
+    'How would you like to be contacted?',
+    movies['title'].values
 )
 
-
-# Load the data from a CSV. We're caching this so it doesn't reload every time the app
-# reruns (e.g. if the user interacts with the widgets).
-@st.cache_data
-def load_data():
-    df = pd.read_csv("data/movies_genres_summary.csv")
-    return df
-
-
-df = load_data()
-
-# Show a multiselect widget with the genres using `st.multiselect`.
-genres = st.multiselect(
-    "Genres",
-    df.genre.unique(),
-    ["Action", "Adventure", "Biography", "Comedy", "Drama", "Horror"],
-)
-
-# Show a slider widget with the years using `st.slider`.
-years = st.slider("Years", 1986, 2006, (2000, 2016))
-
-# Filter the dataframe based on the widget input and reshape it.
-df_filtered = df[(df["genre"].isin(genres)) & (df["year"].between(years[0], years[1]))]
-df_reshaped = df_filtered.pivot_table(
-    index="year", columns="genre", values="gross", aggfunc="sum", fill_value=0
-)
-df_reshaped = df_reshaped.sort_values(by="year", ascending=False)
-
-
-# Display the data as a table using `st.dataframe`.
-st.dataframe(
-    df_reshaped,
-    use_container_width=True,
-    column_config={"year": st.column_config.TextColumn("Year")},
-)
-
-# Display the data as an Altair chart using `st.altair_chart`.
-df_chart = pd.melt(
-    df_reshaped.reset_index(), id_vars="year", var_name="genre", value_name="gross"
-)
-chart = (
-    alt.Chart(df_chart)
-    .mark_line()
-    .encode(
-        x=alt.X("year:N", title="Year"),
-        y=alt.Y("gross:Q", title="Gross earnings ($)"),
-        color="genre:N",
-    )
-    .properties(height=320)
-)
-st.altair_chart(chart, use_container_width=True)
+if st.button('Recommend'):
+    names, posters = recommend(selected_movie_name)
+    col1, col2, col3, col4, col5 = st.columns(5)
+    with col1:
+        st.text(names[0])
+        st.image(posters[0])
+    with col2:
+        st.text(names[1])
+        st.image(posters[1])
+    with col3:
+        st.text(names[2])
+        st.image(posters[2])
+    with col4:
+        st.text(names[3])
+        st.image(posters[3])
+    with col5:
+        st.text(names[4])
+        st.image(posters[4])
