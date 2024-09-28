@@ -2,12 +2,6 @@ import zipfile
 import pandas as pd
 import streamlit as st
 st.title('Movie Recommender System')
-hide_github_icon = """
-#GithubIcon {
-  visibility: hidden;
-}
-"""
-st.markdown(hide_github_icon, unsafe_allow_html=True)
 
 import pickle
 import requests
