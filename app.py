@@ -1,6 +1,16 @@
 import zipfile
 import pandas as pd
 import streamlit as st
+
+st.title('Movie Recommender System')
+hide_github_icon = """
+#GithubIcon {
+  visibility: hidden;
+}
+"""
+st.markdown(hide_github_icon, unsafe_allow_html=True)
+
+
 import pickle
 import requests
 from PIL import Image
@@ -59,13 +69,6 @@ movies_dict = pickle.load(open('movie_dict.pkl', 'rb'))
 movies = pd.DataFrame(movies_dict)
 
 similarity = pickle.load(open('./similarity_files/similarity.pkl', 'rb'))
-st.title('Movie Recommender System')
-hide_github_icon = """
-#GithubIcon {
-  visibility: hidden;
-}
-"""
-st.markdown(hide_github_icon, unsafe_allow_html=True)
 
 selected_movie_name = st.selectbox(
     'How would you like to be contacted?',
