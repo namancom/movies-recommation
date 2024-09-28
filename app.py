@@ -60,6 +60,12 @@ movies = pd.DataFrame(movies_dict)
 
 similarity = pickle.load(open('./similarity_files/similarity.pkl', 'rb'))
 st.title('Movie Recommender System')
+hide_github_icon = """
+#GithubIcon {
+  visibility: hidden;
+}
+"""
+st.markdown(hide_github_icon, unsafe_allow_html=True)
 
 selected_movie_name = st.selectbox(
     'How would you like to be contacted?',
