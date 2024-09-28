@@ -6,8 +6,7 @@ import requests
 from PIL import Image
 from io import BytesIO
 import os
-from dotenv import load_dotenv
-load_dotenv()
+
 MY_ENV_VAR = os.getenv('apikey')
 def unzip_file_if_not_exists(zip_file_path, extract_to_dir):
     # Check if the directory already exists
